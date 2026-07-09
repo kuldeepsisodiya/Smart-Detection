@@ -159,6 +159,76 @@ export function initHistory(appState) {
             watering: 'Switch to drip lines; avoid wetting the canopy.',
             isolation: 'Segregate fallen leaf debris. Mulch around base to cover spores.',
             recovery: '14-21 days of treatment. Maintain seasonal fungicide schedules.'
+        },
+        'Bacterial Spot': {
+            treatment: 'Prune infected leaves showing dark spots. Remove heavily infected plants immediately to prevent spread. Sanitize pruning shears.',
+            fungicide: 'Copper-based bactericide. Dosage Rate: 2.0 grams per Liter of water. Spray foliage weekly at the first sign of symptoms.',
+            watering: 'Drip irrigation only. Avoid overhead watering to prevent bacteria from spreading in splashes.',
+            isolation: 'Burn or bury infected residues. Avoid working in fields when plants are wet.',
+            recovery: '10-14 days. Monitor newly emerging leaves closely.'
+        },
+        'Mosaic Virus': {
+            treatment: '🚨 CRITICAL: Viral infection has no cure. Remove and destroy the entire plant immediately to prevent aphid transmission to healthy crops.',
+            fungicide: 'N/A. Control vector insects (aphids) by spraying Neem oil at 5.0 mL per Liter of water.',
+            watering: 'Standard watering for remaining healthy crops.',
+            isolation: 'Strict isolation. Pull infected plants immediately. Clean hands and tools after contact.',
+            recovery: 'Irreversible for infected plants. Shift focus to insect prevention.'
+        },
+        'Yellow Leaf Curl Virus': {
+            treatment: '🚨 CRITICAL: Viral infection has no cure. Pull and destroy infected plants immediately to prevent whitefly transmission.',
+            fungicide: 'N/A. Control whiteflies carrying the virus using insecticidal soap at 5.0 mL per Liter of water.',
+            watering: 'Standard watering for remaining crops.',
+            isolation: 'Keep field borders clear of weeds that harbor whitefly vectors.',
+            recovery: 'Irreversible for affected plants. Implement vector insect screens.'
+        },
+        'Spider Mites': {
+            treatment: 'Spray under leaf surfaces with high-pressure hose water to dislodge mites. Remove heavily infested twigs.',
+            fungicide: 'Neem Oil or Insecticidal Soap. Dosage Rate: 5.0 mL per Liter of water. Apply every 3-5 days under leaves.',
+            watering: 'Keep soil moist. Spider mites thrive in dry, dusty conditions.',
+            isolation: 'Isolate affected pots or rows. Clean nearby weeds.',
+            recovery: '7-10 days of consistent treatment.'
+        },
+        'Leaf Mold': {
+            treatment: 'Increase air circulation inside the plant canopy by pruning lower branches. Avoid high-density planting.',
+            fungicide: 'Chlorothalonil or Copper soap. Dosage Rate: 1.5 mL per Liter of water. Spray every 7 days.',
+            watering: 'Water the base only. Water early in morning so foliage dries quickly.',
+            isolation: 'Prune and isolate affected branches. Do not compost leaf waste.',
+            recovery: '10-14 days.'
+        },
+        'Powdery Mildew': {
+            treatment: 'Prune branches with white powdery spots. Keep underbrush clear to maximize canopy sunlight.',
+            fungicide: 'Potassium Bicarbonate or Sulfur spray. Dosage Rate: 3.0 grams per Liter of water. Apply every 7-10 days.',
+            watering: 'Drip irrigation only. Favorable in high humidity.',
+            isolation: 'Rake and destroy fallen leaves. Disinfect tools.',
+            recovery: '10-14 days.'
+        },
+        'Black Rot': {
+            treatment: '🚨 CRITICAL: Prune infected fruit bunches and leaves showing v-shaped lesions. Destroy pruned debris.',
+            fungicide: 'Mancozeb or Captan. Dosage Rate: 2.0 grams per Liter of water. Spray every 10 days starting at bud break.',
+            watering: 'Avoid overhead watering. Maintain excellent soil drainage.',
+            isolation: 'Isolate affected grapevines. Clear any mummified fruit left on the ground.',
+            recovery: '2-3 weeks.'
+        },
+        'Gray Leaf Spot': {
+            treatment: 'Prune lower leaves showing gray rectangular lesions. Rake and dispose of plant residues.',
+            fungicide: 'Strobilurin fungicides (Headline). Dosage Rate: 1.0 mL per Liter of water. Apply at first spot.',
+            watering: 'Standard watering schedules.',
+            isolation: 'Rotate crops next season to prevent soil spore carryover.',
+            recovery: '14 days.'
+        },
+        'Leaf Spot': {
+            treatment: 'Prune leaves with spotting. Rake leaf debris from base of plants.',
+            fungicide: 'Copper Soap or Chlorothalonil. Dosage Rate: 1.5 grams per Liter of water every 7-10 days.',
+            watering: 'Water ground-level only. Prevent leaf wetness.',
+            isolation: 'Isolate affected plants. Clear nearby weeds.',
+            recovery: '10-14 days.'
+        },
+        'Leaf Blight': {
+            treatment: '🚨 CRITICAL: Immediately remove and destroy affected foliage showing large necrotic patches.',
+            fungicide: 'Copper Soap or Mancozeb. Dosage Rate: 2.0 grams per Liter of water every 5-7 days.',
+            watering: 'Drip lines only. Stop all overhead irrigation.',
+            isolation: 'Bury severe plants. Disinfect hands and tools.',
+            recovery: '14-21 days.'
         }
     };
 

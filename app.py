@@ -646,6 +646,7 @@ def parse_roboflow_class(class_name):
     crop = 'Tomato'
     disease = 'Healthy'
     severity = 'Normal'
+    
     if 'tomato' in class_lower:
         crop = 'Tomato'
     elif 'apple' in class_lower:
@@ -666,18 +667,58 @@ def parse_roboflow_class(class_name):
         crop = 'Raspberry'
     elif 'bell' in class_lower or 'pepper' in class_lower:
         crop = 'Bell Pepper'
-    if 'rust' in class_lower:
+    elif 'corn' in class_lower:
+        crop = 'Corn'
+    elif 'potato' in class_lower:
+        crop = 'Potato'
+    elif 'squash' in class_lower:
+        crop = 'Squash'
+        
+    if 'bacterial spot' in class_lower:
+        disease = 'Bacterial Spot'
+        severity = 'Severe'
+    elif 'mosaic virus' in class_lower:
+        disease = 'Mosaic Virus'
+        severity = 'Severe'
+    elif 'yellow leaf' in class_lower or 'yellow virus' in class_lower:
+        disease = 'Yellow Leaf Curl Virus'
+        severity = 'Severe'
+    elif 'spider mites' in class_lower:
+        disease = 'Spider Mites'
+        severity = 'Severe'
+    elif 'septoria' in class_lower:
+        disease = 'Septoria Leaf Spot'
+        severity = 'Moderate'
+    elif 'mold' in class_lower:
+        disease = 'Leaf Mold'
+        severity = 'Moderate'
+    elif 'powdery mildew' in class_lower:
+        disease = 'Powdery Mildew'
+        severity = 'Moderate'
+    elif 'black rot' in class_lower:
+        disease = 'Black Rot'
+        severity = 'Severe'
+    elif 'gray leaf spot' in class_lower:
+        disease = 'Gray Leaf Spot'
+        severity = 'Moderate'
+    elif 'early blight' in class_lower:
+        disease = 'Early Blight'
+        severity = 'Moderate'
+    elif 'late blight' in class_lower:
+        disease = 'Late Blight'
+        severity = 'Severe'
+    elif 'leaf spot' in class_lower or 'spot' in class_lower:
+        disease = 'Leaf Spot'
+        severity = 'Moderate'
+    elif 'rust' in class_lower:
         disease = 'Apple Rust' if crop == 'Apple' else 'Rust'
         severity = 'Severe'
     elif 'scab' in class_lower:
         disease = 'Apple Scab' if crop == 'Apple' else 'Scab'
         severity = 'Severe'
-    elif 'late blight' in class_lower:
-        disease = 'Late Blight'
+    elif 'blight' in class_lower:
+        disease = 'Leaf Blight'
         severity = 'Severe'
-    elif 'early blight' in class_lower:
-        disease = 'Early Blight'
-        severity = 'Moderate'
     elif 'leaf' in class_lower:
         disease = 'Healthy'
         severity = 'Normal'
