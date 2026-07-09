@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Disease Detection & Smart Irrigation Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="dark">
+    <div id="login-modal" class="modal-overlay active">
+        <div class="modal-card auth-card">
+            <div class="auth-header">
+                <div class="brand-logo-container">
+                    <i data-lucide="sprout" class="brand-icon"></i>
+                </div>
+                <h2>AgriControl Smart Hub</h2>
+                <p>Sign in to access your crop monitoring dashboard</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <div class="input-with-icon">
+                        <i data-lucide="user"></i>
+                        <input type="text" id="username" placeholder="e.g., admin or farmer" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-with-icon">
+                        <i data-lucide="lock"></i>
+                        <input type="password" id="password" required>
+                    </div>
+                </div>
+                <div id="login-error-msg" class="error-text hidden">Invalid username or password</div>
+                <button type="submit" id="btn-login" class="btn btn-primary btn-block">Sign In</button>
+            </form>
+            <div class="auth-footer">
+                <p>Default credentials: <strong>admin/admin</strong> or <strong>farmer/farmer</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container" class="app-layout hidden">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i data-lucide="sprout" class="logo-icon"></i>
+                    <span class="logo-text">AgriControl</span>
+                </div>
+                <button id="sidebar-toggle-btn" class="sidebar-toggle" aria-label="Toggle Navigation">
+                    <i data-lucide="menu"></i>
+                </button>
+            </div>
+            <div class="sidebar-profile">
+                <div class="avatar">
+                    <i data-lucide="user-cog" id="user-role-avatar-icon"></i>
+                </div>
+                <div class="profile-info">
+                    <h4 id="user-display-name">Username</h4>
+                    <span id="user-display-role" class="badge badge-role">Farmer</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-tab="webcam">
+                    <i data-lucide="camera"></i>
+                    <span>Live Camera</span>
+                </button>
+                <button class="nav-item" data-tab="batch">
+                    <i data-lucide="files"></i>
+                    <span>Batch Upload</span>
+                </button>
+                <button class="nav-item" data-tab="gallery">
+                    <i data-lucide="image"></i>
+                    <span>Image Gallery</span>
+                </button>
+                <button class="nav-item" data-tab="timeline">
+                    <i data-lucide="calendar-days"></i>
+                    <span>Timeline</span>
+                </button>
+                <button class="nav-item admin-only" data-tab="rules">
+                    <i data-lucide="sliders-horizontal"></i>
+                    <span>Smart Rules</span>
+                </button>
+                <button class="nav-item" data-tab="admin">
+                    <i data-lucide="settings"></i>
+                    <span>Settings</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-widget">
+                <div class="widget-header">
+                    <span>Irrigation Valve</span>
+                    <span id="valve-status-badge" class="badge badge-error">Offline</span>
+                </div>
+                <div class="widget-content">
+                    <div class="irrigation-state-display">
+                        <div class="state-circle" id="valve-state-indicator">
+                            <i data-lucide="droplet"></i>
+                        </div>
+                        <div class="state-text">
+                            <span class="state-label">Current State</span>
+                            <strong id="valve-state-text">CLOSED</strong>
+                        </div>
+                    </div>
+                    <div class="widget-actions">
+                        <button id="btn-manual-irrigation" class="btn btn-secondary btn-block btn-sm">
+                            <i data-lucide="play"></i>
+                            <span>Manual Start</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <button id="btn-logout" class="btn btn-ghost btn-block btn-sm">
+                    <i data-lucide="log-out"></i>
+                    <span>Sign Out</span>
+                </button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+                <div class="topbar-right">
+                    <div class="connection-status" id="roboflow-status">
+                        <span class="status-indicator online"></span>
+                        <span class="status-text">Roboflow API Online</span>
+                    </div>
+                    <button id="theme-toggle" class="btn-theme-toggle" aria-label="Toggle Light/Dark Theme">
+                        <i data-lucide="sun" class="sun-icon"></i>
+                        <i data-lucide="moon" class="moon-icon"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-scroll-container">
+                <section id="tab-dashboard" class="tab-panel active">
+                    <div class="kpi-grid">
+                        <div class="kpi-card border-card">
+                            <div class="kpi-icon-container bg-blue-light">
+                                <i data-lucide="scan"></i>
+                            </div>
+                            <div class="kpi-body">
+                                <span class="kpi-label">Total Detections</span>
+                                <h3 class="kpi-value" id="kpi-total-detections">0</h3>
+                            </div>
+                        </div>
+                        <div class="kpi-card border-card">
+                            <div class="kpi-icon-container bg-amber-light">
+                                <i data-lucide="sprout"></i>
+                            </div>
+                            <div class="kpi-body">
+                                <span class="kpi-label">Most Detected Crop</span>
+                                <h3 class="kpi-value" id="kpi-most-crop">Tomato</h3>
+                            </div>
+                        </div>
+                        <div class="kpi-card border-card">
+                            <div class="kpi-icon-container bg-emerald-light">
+                                <i data-lucide="activity"></i>
+                            </div>
+                            <div class="kpi-body">
+                                <span class="kpi-label">Avg. Confidence</span>
+                                <h3 class="kpi-value" id="kpi-avg-confidence">0.0%</h3>
+                            </div>
+                        </div>
+                        <div class="kpi-card border-card">
+                            <div class="kpi-icon-container bg-rose-light">
+                                <i data-lucide="droplet"></i>
+                            </div>
+                            <div class="kpi-body">
+                                <span class="kpi-label">Irrigation Cycles</span>
+                                <h3 class="kpi-value" id="kpi-irrigation-cycles">0</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="dashboard-left">
+                            <div class="card chart-card">
+                                <div class="card-header">
+                                    <h3>Crop Health Trend (Last 14 Days)</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div id="chart-trends" class="chart-container"></div>
+                                </div>
+                            </div>
+                            <div class="grid-2-col">
+                                <div class="card chart-card">
+                                    <div class="card-header">
+                                        <h3>Disease Distribution</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="chart-distribution" class="chart-container"></div>
+                                    </div>
+                                </div>
+                                <div class="card chart-card">
+                                    <div class="card-header">
+                                        <h3>Irrigation Event History</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="chart-confidence" class="chart-container"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-right-panel">
+                            <div class="card weather-card">
+                                <div class="card-header">
+                                    <h3>Microclimate Info</h3>
+                                    <span id="weather-location" class="weather-meta">Delhi, IN</span>
+                                </div>
+                                <div class="card-body">
+                                    <div id="weather-loading" class="weather-loading-spinner text-center">
+                                        <div class="spinner"></div>
+                                        <p>Loading Open-Meteo Weather...</p>
+                                    </div>
+                                    <div id="weather-content" class="weather-display hidden">
+                                        <div class="weather-main-row">
+                                            <div class="weather-temp-col">
+                                                <span id="weather-temp" class="weather-temp">--°C</span>
+                                                <span id="weather-condition" class="weather-desc">Sunny</span>
+                                            </div>
+                                            <i data-lucide="cloud-sun" class="weather-icon-large" id="weather-main-icon"></i>
+                                        </div>
+                                        <div class="weather-details-grid">
+                                            <div class="weather-detail-item">
+                                                <i data-lucide="droplets"></i>
+                                                <span class="detail-label">Humidity</span>
+                                                <strong id="weather-humidity">--%</strong>
+                                            </div>
+                                            <div class="weather-detail-item">
+                                                <i data-lucide="wind"></i>
+                                                <span class="detail-label">Wind</span>
+                                                <strong id="weather-wind">-- km/h</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card advisor-card">
+                                <div class="card-header">
+                                    <h3>Irrigation & Disease Advisor</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="advisor-level" id="advisor-risk-pill">
+                                        <span class="advisor-indicator"></span>
+                                        <span id="advisor-risk-text">MODERATE PROPAGATION RISK</span>
+                                    </div>
+                                    <p class="advisor-narrative" id="advisor-narrative-text">
+                                        Favorable temperatures and medium humidity levels mean early warning checks are advised. Check tomato and potato crops for early blights. Keep overhead watering in check.
+                                    </p>
+                                    <div class="advisor-tips">
+                                        <h4>Irrigation Recommendation</h4>
+                                        <ul id="advisor-tips-list">
+                                            <li>Water early in the morning between 5:00 AM and 8:00 AM.</li>
+                                            <li>Keep drip lines active; restrict overhead spray systems.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card relay-log-card">
+                                <div class="card-header">
+                                    <h3>Irrigation Valve Activity</h3>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="activity-log" id="irrigation-recent-logs-list">
+                                        <li class="empty-state">No recent activity logs.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="tab-webcam" class="tab-panel">
+                    <div class="split-layout">
+                        <div class="split-main border-card">
+                            <div class="camera-stream-wrapper">
+                                <video id="webcam-video" autoplay playsinline muted class="offscreen-video"></video>
+                                <canvas id="webcam-canvas" width="640" height="480"></canvas>
+                                <div class="camera-overlay-instructions" id="camera-instructions">
+                                    <i data-lucide="video"></i>
+                                    <p>Click "Start Camera Stream" below to initialize real-time detection</p>
+                                </div>
+                                <div class="camera-toast alert alert-info hidden" id="webcam-toast">
+                                    <span class="spinner inline-spinner"></span>
+                                    <span id="webcam-toast-text">Analyzing frame...</span>
+                                </div>
+                            </div>
+                            <div class="camera-controls">
+                                <div class="controls-left">
+                                    <button id="btn-toggle-camera" class="btn btn-primary">
+                                        <i data-lucide="video"></i>
+                                        <span>Start Camera Stream</span>
+                                    </button>
+                                    <button id="btn-capture-frame" class="btn btn-secondary" disabled>
+                                        <i data-lucide="scan-line"></i>
+                                        <span>Capture & Run Inference</span>
+                                    </button>
+                                </div>
+                                <div class="controls-right">
+                                    <span class="monitor-fps" id="perf-fps">0 FPS</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="split-side flex-col">
+                            <div class="card control-card">
+                                <div class="card-header">
+                                    <h3>Bounding Box Display Controls</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group form-inline-toggle">
+                                        <label for="bbox-toggle-boxes">Show Bounding Boxes</label>
+                                        <label class="switch">
+                                            <input type="checkbox" id="bbox-toggle-boxes" checked>
+                                            <span class="slider-toggle rounded"></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group form-inline-toggle">
+                                        <label for="bbox-toggle-labels">Show Class Labels</label>
+                                        <label class="switch">
+                                            <input type="checkbox" id="bbox-toggle-labels" checked>
+                                            <span class="slider-toggle rounded"></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group form-inline-toggle">
+                                        <label for="bbox-toggle-scores">Show Confidence Scores</label>
+                                        <label class="switch">
+                                            <input type="checkbox" id="bbox-toggle-scores" checked>
+                                            <span class="slider-toggle rounded"></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="bbox-color">Box Border Color</label>
+                                        <input type="color" id="bbox-color" value="#ef4444" class="color-picker-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="bbox-thickness">Border Line Thickness (px)</label>
+                                        <div class="range-slider-wrapper">
+                                            <input type="range" id="bbox-thickness" min="1" max="10" value="3">
+                                            <span id="bbox-thickness-val" class="slider-numeric-val">3px</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card perf-card">
+                                <div class="card-header">
+                                    <h3>Performance Monitors</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="performance-metric-item">
+                                        <span>Image Prep Latency</span>
+                                        <strong id="perf-prep">0 ms</strong>
+                                    </div>
+                                    <div class="performance-metric-item">
+                                        <span>Model Inference Speed</span>
+                                        <strong id="perf-inference">0 ms</strong>
+                                    </div>
+                                    <div class="performance-metric-item">
+                                        <span>Rules Match & Action latency</span>
+                                        <strong id="perf-rules">0 ms</strong>
+                                    </div>
+                                    <div class="performance-metric-item">
+                                        <span>Total Round-Trip Latency</span>
+                                        <strong id="perf-total">0 ms</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="tab-batch" class="tab-panel">
+                    <div class="split-layout">
+                        <div class="split-main">
+                            <div class="card drag-drop-card border-card" id="drop-zone">
+                                <i data-lucide="upload-cloud" class="upload-icon"></i>
+                                <h3>Drag & Drop Crop Images Here</h3>
+                                <p>Supports JPG, JPEG, and PNG. Process multiple files simultaneously.</p>
+                                <label for="batch-file-input" class="btn btn-secondary cursor-pointer">
+                                    <span>Select Files</span>
+                                    <input type="file" id="batch-file-input" multiple accept="image/*" class="hidden">
+                                </label>
+                            </div>
+                            <div class="card batch-list-card hidden" id="batch-progress-card">
+                                <div class="card-header">
+                                    <h3>Batch Processing Queue</h3>
+                                    <span id="batch-summary-text" class="text-zinc-500">0 / 0 Completed</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar-fill" id="batch-progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <div class="batch-items-container" id="batch-items-list">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="split-side">
+                            <div class="card summary-report-card">
+                                <div class="card-header">
+                                    <h3>Batch Results Summary</h3>
+                                </div>
+                                <div class="card-body" id="batch-summary-results">
+                                    <div class="empty-state">
+                                        <i data-lucide="file-bar-chart-2"></i>
+                                        <p>Run batch upload to view aggregated predictions and counter summaries.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="tab-gallery" class="tab-panel">
+                    <div class="toolbar border-card">
+                        <div class="toolbar-left">
+                            <div class="search-box">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="gallery-search" placeholder="Search by crop, disease...">
+                            </div>
+                            <div class="filter-group">
+                                <select id="gallery-filter-crop">
+                                    <option value="">All Crops</option>
+                                    <option value="Tomato">Tomato</option>
+                                    <option value="Corn">Corn</option>
+                                    <option value="Potato">Potato</option>
+                                </select>
+                                <select id="gallery-filter-severity">
+                                    <option value="">All Severities</option>
+                                    <option value="Normal">🟢 Normal</option>
+                                    <option value="Moderate">🟡 Moderate</option>
+                                    <option value="Severe">🔴 Severe</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="toolbar-right">
+                            <button id="btn-export-csv" class="btn btn-secondary">
+                                <i data-lucide="file-spreadsheet"></i>
+                                <span>Export CSV</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="gallery-grid" class="gallery-grid-layout">
+                        <div class="empty-state w-full col-span-full">
+                            <i data-lucide="image-off"></i>
+                            <p>No detection history matching search parameters.</p>
+                        </div>
+                    </div>
+                    <div class="pagination-controls" id="gallery-pagination">
+                        <button class="btn btn-secondary btn-icon" id="btn-gallery-first" disabled><i data-lucide="chevrons-left"></i></button>
+                        <button class="btn btn-secondary btn-icon" id="btn-gallery-prev" disabled><i data-lucide="chevron-left"></i></button>
+                        <span id="gallery-page-indicator" class="page-indicator">Page 1 of 1</span>
+                        <button class="btn btn-secondary btn-icon" id="btn-gallery-next" disabled><i data-lucide="chevron-right"></i></button>
+                        <button class="btn btn-secondary btn-icon" id="btn-gallery-last" disabled><i data-lucide="chevrons-right"></i></button>
+                    </div>
+                </section>
+
+                <section id="tab-timeline" class="tab-panel">
+                    <div class="card timeline-card border-card">
+                        <div class="card-header">
+                            <h3>Historical Chronological Log</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="timeline-container" id="timeline-flow">
+                                <div class="empty-state">
+                                    <i data-lucide="calendar-x"></i>
+                                    <p>No timeline records found. Start capturing detections to see results.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="tab-rules" class="tab-panel admin-only-panel">
+                    <div class="split-layout">
+                        <div class="split-main">
+                            <div class="card rules-table-card border-card">
+                                <div class="card-header flex-header">
+                                    <h3>Automated Irrigation Decision Rules</h3>
+                                    <div class="flex-actions" style="margin-top: 0;">
+                                        <button id="btn-restore-rules" class="btn btn-secondary btn-sm admin-only-field">
+                                            <i data-lucide="refresh-cw"></i>
+                                            <span>Restore Defaults</span>
+                                        </button>
+                                        <button id="btn-add-rule" class="btn btn-primary btn-sm">
+                                            <i data-lucide="plus"></i>
+                                            <span>Add Decision Rule</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body table-responsive">
+                                    <table class="rules-table" id="rules-db-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Crop Match</th>
+                                                <th>Disease/State Match</th>
+                                                <th>Min. Confidence</th>
+                                                <th>Assigned Action</th>
+                                                <th>State</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="rules-table-tbody">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="split-side">
+                            <div class="card rule-editor-card hidden" id="rule-editor-panel">
+                                <div class="card-header flex-header">
+                                    <h3 id="rule-editor-title">Create Smart Rule</h3>
+                                    <button class="btn-close" id="btn-close-rule-editor"><i data-lucide="x"></i></button>
+                                </div>
+                                <div class="card-body">
+                                    <form id="rule-editor-form">
+                                        <input type="hidden" id="edit-rule-id">
+                                        <div class="form-group">
+                                            <label for="rule-crop">Crop Species</label>
+                                            <input type="text" id="rule-crop" placeholder="e.g., Tomato, Corn" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="rule-disease">Disease Status</label>
+                                            <input type="text" id="rule-disease" placeholder="e.g., Late Blight, Healthy" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="rule-confidence">Confidence Threshold (%)</label>
+                                            <div class="range-slider-wrapper">
+                                                <input type="range" id="rule-confidence" min="10" max="100" value="80">
+                                                <span id="rule-confidence-val" class="slider-numeric-val">80%</span>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="rule-action">Target Action</label>
+                                            <select id="rule-action" required>
+                                                <option value="start_irrigation">Start Irrigation (Trigger Relay)</option>
+                                                <option value="stop_irrigation">Stop Irrigation (Safety Cutoff)</option>
+                                                <option value="notify_only">Notify Farmer Only (Log alert/email)</option>
+                                                <option value="do_nothing">Do Nothing (Ignore logging only)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group form-inline-toggle">
+                                            <label for="rule-active">Enable Rule</label>
+                                            <label class="switch">
+                                                <input type="checkbox" id="rule-active" checked>
+                                                <span class="slider-toggle rounded"></span>
+                                            </label>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-block">Save Rule</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="tab-admin" class="tab-panel">
+                    <div class="admin-settings-container">
+                        <div class="card border-card">
+                            <div class="card-header">
+                                <h3>Computer Vision - Roboflow Credentials</h3>
+                            </div>
+                            <div class="card-body">
+                                <form id="roboflow-config-form">
+                                    <div class="form-group">
+                                        <label for="config-roboflow-key">Private API Key</label>
+                                        <input type="password" id="config-roboflow-key" placeholder="Enter Roboflow API Key">
+                                        <small class="help-text">Leave blank to force offline simulation / demonstration mock prediction.</small>
+                                    </div>
+                                    <div class="grid-3-col">
+                                        <div class="form-group">
+                                            <label for="config-roboflow-workspace">Workspace ID</label>
+                                            <input type="text" id="config-roboflow-workspace" value="kuldeeps-workspace-cli7o">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="config-roboflow-project">Project ID</label>
+                                            <input type="text" id="config-roboflow-project" value="plant-disease-w0ogb-gdeld">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="config-roboflow-version">Model Version ID</label>
+                                            <input type="text" id="config-roboflow-version" value="1">
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary admin-only-field">Update API Settings</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card border-card">
+                            <div class="card-header">
+                                <h3>Irrigation & SD Card Storage Limits</h3>
+                            </div>
+                            <div class="card-body">
+                                <form id="system-config-form">
+                                    <div class="grid-2-col">
+                                        <div class="form-group">
+                                            <label for="config-irrigation-duration">Default Irrigation Duration (seconds)</label>
+                                            <input type="number" id="config-irrigation-duration" min="5" max="3600" value="10">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="config-storage-limit">Image Storage Retention Limit</label>
+                                            <input type="number" id="config-storage-limit" min="10" max="2000" value="500">
+                                            <small class="help-text">Auto-deletes oldest physical images beyond this count to protect SD Card disk space.</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group form-inline-toggle">
+                                        <label for="config-auto-mode">Enable Automated Rules Execution</label>
+                                        <label class="switch">
+                                            <input type="checkbox" id="config-auto-mode" checked>
+                                            <span class="slider-toggle rounded"></span>
+                                        </label>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Save System Config</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card border-card">
+                            <div class="card-header">
+                                <h3>SMTP Email Alerts Settings</h3>
+                            </div>
+                            <div class="card-body">
+                                <form id="smtp-config-form">
+                                    <div class="form-group form-inline-toggle">
+                                        <label for="config-email-enabled">Enable Severe Disease Email Alerts</label>
+                                        <label class="switch">
+                                            <input type="checkbox" id="config-email-enabled">
+                                            <span class="slider-toggle rounded"></span>
+                                        </label>
+                                    </div>
+                                    <div class="grid-2-col">
+                                        <div class="form-group">
+                                            <label for="config-smtp-server">SMTP Server Address</label>
+                                            <input type="text" id="config-smtp-server" placeholder="e.g. smtp.gmail.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="config-smtp-port">SMTP Port</label>
+                                            <input type="text" id="config-smtp-port" value="587">
+                                        </div>
+                                    </div>
+                                    <div class="grid-3-col">
+                                        <div class="form-group">
+                                            <label for="config-smtp-sender">Sender Email Address</label>
+                                            <input type="email" id="config-smtp-sender">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="config-smtp-password">Sender Password</label>
+                                            <input type="password" id="config-smtp-password" placeholder="Enter App Password">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="config-smtp-receiver">Recipient Farmer Email Address</label>
+                                            <input type="email" id="config-smtp-receiver">
+                                        </div>
+                                    </div>
+                                    <div class="flex-actions">
+                                        <button type="submit" class="btn btn-primary admin-only-field">Save SMTP Settings</button>
+                                        <button type="button" id="btn-test-email" class="btn btn-secondary admin-only-field" disabled>Send Test Email</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card border-card">
+                            <div class="card-header">
+                                <h3>Weather API Location coordinates</h3>
+                            </div>
+                            <div class="card-body">
+                                <form id="weather-config-form">
+                                    <div class="grid-2-col">
+                                        <div class="form-group">
+                                            <label for="config-lat">Latitude</label>
+                                            <input type="text" id="config-lat" value="28.6139">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="config-lon">Longitude</label>
+                                            <input type="text" id="config-lon" value="77.2090">
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Update Geolocation coordinates</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="card border-card admin-only">
+                            <div class="card-header">
+                                <h3>System Operations</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="sys-actions-grid">
+                                    <div class="sys-action-card">
+                                        <h4>Database Backups</h4>
+                                        <p>Manually trigger database files snapshot and purge old versions.</p>
+                                        <button id="btn-trigger-backup" class="btn btn-secondary">Backup SQLite Database</button>
+                                    </div>
+                                    <div class="sys-action-card">
+                                        <h4>Clear History Log</h4>
+                                        <p class="text-rose">Permanently clears database detection tables and deletes local images.</p>
+                                        <button id="btn-clear-history" class="btn btn-destructive">Wipe All Detections</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <footer class="app-footer" style="text-align: center; padding: 20px 0; border-top: 1px solid var(--border-color); margin-top: 40px; color: var(--text-muted); font-size: 13px;">
+                    Made By Kuldeep Sisodiya❤️
+                </footer>
+            </div>
+        </main>
+    </div>
+
+    <div id="details-modal" class="modal-overlay">
+        <div class="modal-card details-card">
+            <div class="modal-header">
+                <h3>Detailed Crop Diagnosis</h3>
+                <button class="btn-close" id="btn-close-details"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body scrollable-body">
+                <div class="comparison-container" id="details-img-comparison">
+                    <div class="image-wrapper original-wrapper">
+                        <img id="details-img-original" src="" alt="Original upload">
+                        <span class="img-label">Original image</span>
+                    </div>
+                    <div class="image-wrapper annotated-wrapper">
+                        <div class="annotated-image-wrapper">
+                            <img id="details-img-annotated" src="" alt="Annotated upload">
+                            <div class="bbox-overlay-container" id="details-bbox-container"></div>
+                        </div>
+                        <span class="img-label">Annotated detection</span>
+                    </div>
+                </div>
+
+                <div class="details-metadata-grid">
+                    <div class="meta-section">
+                        <h4>Condition Details</h4>
+                        <div class="diagnosis-summary-box">
+                            <div class="d-flex-between">
+                                <strong id="details-crop-label">Crop Type</strong>
+                                <span id="details-severity-badge" class="badge">--</span>
+                            </div>
+                            <h2 id="details-disease-label" style="margin: 8px 0; color: var(--color-text-main);">Disease Name</h2>
+                            <div class="confidence-bar-wrapper">
+                                <div class="d-flex-between">
+                                    <span>Prediction Confidence</span>
+                                    <span id="details-confidence-text">--%</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill" id="details-confidence-fill" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="timestamp-row">
+                                <i data-lucide="clock"></i>
+                                <span id="details-timestamp-text">Detected: YYYY-MM-DD HH:MM:SS</span>
+                            </div>
+                            <div class="audio-control-row">
+                                <button id="btn-play-voice" class="btn btn-secondary btn-sm">
+                                    <i data-lucide="volume-2"></i>
+                                    <span>Read Diagnostic Aloud</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="meta-section">
+                        <h4>Crop Properties Panel</h4>
+                        <div class="botanical-info-box">
+                            <div class="botanical-row"><span>Scientific Name:</span> <strong id="details-botanical-scientific">--</strong></div>
+                            <div class="botanical-row"><span>Best Season:</span> <strong id="details-botanical-season">--</strong></div>
+                            <div class="botanical-row"><span>Soil Requirements:</span> <strong id="details-botanical-soil">--</strong></div>
+                            <div class="botanical-row"><span>Watering Needs:</span> <strong id="details-botanical-water">--</strong></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="meta-section margin-top-16">
+                    <h4>Remediation Recommendation Adviser</h4>
+                    <div class="recommendation-engine-container">
+                        <div class="recommendation-box bg-emerald-light">
+                            <div class="rec-section-icon"><i data-lucide="check-square"></i></div>
+                            <div class="rec-section-body">
+                                <h5>Remediation Actions / Treatment</h5>
+                                <p id="rec-treatment">Immediate actions should be taken to prevent spread.</p>
+                            </div>
+                        </div>
+                        <div class="recommendation-box bg-blue-light">
+                            <div class="rec-section-icon"><i data-lucide="pipette"></i></div>
+                            <div class="rec-section-body">
+                                <h5>Fungicide & Chemical Treatment</h5>
+                                <p id="rec-fungicide">Recommended compounds and usage rates.</p>
+                            </div>
+                        </div>
+                        <div class="recommendation-box bg-amber-light">
+                            <div class="rec-section-icon"><i data-lucide="droplet"></i></div>
+                            <div class="rec-section-body">
+                                <h5>Watering Adjustments</h5>
+                                <p id="rec-watering">Drip adjustments or watering limits.</p>
+                            </div>
+                        </div>
+                        <div class="recommendation-box bg-rose-light">
+                            <div class="rec-section-icon"><i data-lucide="shield-alert"></i></div>
+                            <div class="rec-section-body">
+                                <h5>Isolation Guidelines</h5>
+                                <p id="rec-isolation">Field segregation policies.</p>
+                            </div>
+                        </div>
+                        <div class="recommendation-box bg-zinc-light">
+                            <div class="rec-section-icon"><i data-lucide="calendar"></i></div>
+                            <div class="rec-section-body">
+                                <h5>Expected Recovery Period</h5>
+                                <p id="rec-recovery">2-3 Weeks under isolated treatment conditions.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="details-share-row margin-top-16">
+                    <div class="share-col">
+                        <h4>Share Diagnosis Result</h4>
+                        <div class="share-btn-group">
+                            <button id="btn-share-whatsapp" class="btn btn-secondary btn-sm"><i data-lucide="message-square"></i><span>WhatsApp</span></button>
+                            <button id="btn-share-email" class="btn btn-secondary btn-sm"><i data-lucide="mail"></i><span>Email Link</span></button>
+                            <button id="btn-share-copy" class="btn btn-secondary btn-sm"><i data-lucide="copy"></i><span>Copy Link</span></button>
+                        </div>
+                    </div>
+                    <div class="qr-col">
+                        <h4>Diagnose Report Access QR</h4>
+                        <div class="qr-code-wrapper" id="details-qrcode">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-download-pdf-report" class="btn btn-primary">
+                    <i data-lucide="download"></i>
+                    <span>Download Diagnostic PDF Report</span>
+                </button>
+                <button class="btn btn-secondary" id="btn-close-details-footer">Close Drawer</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
