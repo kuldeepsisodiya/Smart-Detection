@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initMobileNav();
     checkAuthStatus();
     setupAuthEventListeners();
+    lucide.createIcons();
 });
 
 
