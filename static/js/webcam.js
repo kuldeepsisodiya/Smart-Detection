@@ -77,23 +77,38 @@ export function initWebcam(appState) {
             .then(mediaStream => {
                 stream = mediaStream;
                 video.style.display = 'block';
-                video.srcObject = mediaStream;
-                video.onloadedmetadata = () => {
-                    video.play();
-                    isStreaming = true;
-                    cameraInstructions.classList.add('hidden');
-                    btnCaptureFrame.removeAttribute('disabled');
-                    btnToggleCamera.classList.remove('btn-primary');
-                    btnToggleCamera.classList.add('btn-secondary');
-                    btnToggleCamera.querySelector('span').textContent = 'Stop Camera';
-                    const camIcon = btnToggleCamera.querySelector('i, svg');
-                    if (camIcon) camIcon.setAttribute('data-lucide', 'video-off');
-                    lucide.createIcons();
-                    lastFpsTime = performance.now();
-                    frameCount = 0;
-                    renderLoop();
-                    startFpsTracker();
+                
+                let metadataHandled = false;
+                const onMetadataLoaded = () => {
+                    if (metadataHandled) return;
+                    metadataHandled = true;
+                    video.play()
+                        .then(() => {
+                            isStreaming = true;
+                            cameraInstructions.classList.add('hidden');
+                            btnCaptureFrame.removeAttribute('disabled');
+                            btnToggleCamera.classList.remove('btn-primary');
+                            btnToggleCamera.classList.add('btn-secondary');
+                            btnToggleCamera.querySelector('span').textContent = 'Stop Camera';
+                            const camIcon = btnToggleCamera.querySelector('i, svg');
+                            if (camIcon) camIcon.setAttribute('data-lucide', 'video-off');
+                            lucide.createIcons();
+                            lastFpsTime = performance.now();
+                            frameCount = 0;
+                            renderLoop();
+                            startFpsTracker();
+                        })
+                        .catch(err => {
+                            console.error("Error playing video:", err);
+                        });
                 };
+
+                video.onloadedmetadata = onMetadataLoaded;
+                video.srcObject = mediaStream;
+
+                if (video.readyState >= 1) {
+                    onMetadataLoaded();
+                }
             })
             .catch(err => {
                 console.error("Camera access failed:", err);
