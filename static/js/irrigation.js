@@ -120,7 +120,8 @@ export function initIrrigation(appState) {
                     btnManualIrrigation.classList.remove('btn-secondary');
                     btnManualIrrigation.classList.add('btn-destructive');
                     btnManualIrrigation.querySelector('span').textContent = 'Manual Stop';
-                    btnManualIrrigation.querySelector('i').setAttribute('data-lucide', 'square');
+                    const irrIcon = btnManualIrrigation.querySelector('i, svg');
+                    if (irrIcon) irrIcon.setAttribute('data-lucide', 'square');
                 } else {
                     valveStateText.textContent = 'CLOSED';
                     valveStateText.style.color = 'var(--text-secondary)';
@@ -128,7 +129,8 @@ export function initIrrigation(appState) {
                     btnManualIrrigation.classList.add('btn-secondary');
                     btnManualIrrigation.classList.remove('btn-destructive');
                     btnManualIrrigation.querySelector('span').textContent = 'Manual Start';
-                    btnManualIrrigation.querySelector('i').setAttribute('data-lucide', 'play');
+                    const irrIcon = btnManualIrrigation.querySelector('i, svg');
+                    if (irrIcon) irrIcon.setAttribute('data-lucide', 'play');
                 }
                 lucide.createIcons();
                 renderRecentLogs(status.recent_logs);

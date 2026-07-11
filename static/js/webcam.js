@@ -86,7 +86,8 @@ export function initWebcam(appState) {
                     btnToggleCamera.classList.remove('btn-primary');
                     btnToggleCamera.classList.add('btn-secondary');
                     btnToggleCamera.querySelector('span').textContent = 'Stop Camera';
-                    btnToggleCamera.querySelector('i').setAttribute('data-lucide', 'video-off');
+                    const camIcon = btnToggleCamera.querySelector('i, svg');
+                    if (camIcon) camIcon.setAttribute('data-lucide', 'video-off');
                     lucide.createIcons();
                     lastFpsTime = performance.now();
                     frameCount = 0;
@@ -111,8 +112,12 @@ export function initWebcam(appState) {
         btnToggleCamera.classList.add('btn-primary');
         btnToggleCamera.classList.remove('btn-secondary');
         btnToggleCamera.querySelector('span').textContent = 'Start Camera Stream';
-        btnToggleCamera.querySelector('i').setAttribute('data-lucide', 'video');
+        const camIcon = btnToggleCamera.querySelector('i, svg');
+        if (camIcon) camIcon.setAttribute('data-lucide', 'video');
         lucide.createIcons();
+        try {
+            video.pause();
+        } catch (e) {}
         if (video.srcObject) {
             try {
                 video.srcObject.getTracks().forEach(track => track.stop());
