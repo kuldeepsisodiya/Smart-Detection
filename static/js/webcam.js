@@ -76,12 +76,12 @@ export function initWebcam(appState) {
         navigator.mediaDevices.getUserMedia(constraints)
             .then(mediaStream => {
                 stream = mediaStream;
+                video.style.display = 'block';
                 video.srcObject = mediaStream;
                 video.onloadedmetadata = () => {
                     video.play();
                     isStreaming = true;
                     cameraInstructions.classList.add('hidden');
-                    video.classList.add('offscreen-video'); 
                     btnCaptureFrame.removeAttribute('disabled');
                     btnToggleCamera.classList.remove('btn-primary');
                     btnToggleCamera.classList.add('btn-secondary');
@@ -113,10 +113,19 @@ export function initWebcam(appState) {
         btnToggleCamera.querySelector('span').textContent = 'Start Camera Stream';
         btnToggleCamera.querySelector('i').setAttribute('data-lucide', 'video');
         lucide.createIcons();
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
+        if (video.srcObject) {
+            try {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            } catch (e) {}
             video.srcObject = null;
         }
+        if (stream) {
+            try {
+                stream.getTracks().forEach(track => track.stop());
+            } catch (e) {}
+            stream = null;
+        }
+        video.style.display = 'none';
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
         if (fpsInterval) clearInterval(fpsInterval);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -131,7 +140,7 @@ export function initWebcam(appState) {
 
     function renderLoop() {
         if (!isStreaming) return;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (toggleBoxes && toggleBoxes.checked && currentDetections.length > 0) {
             drawDetections();
         }
