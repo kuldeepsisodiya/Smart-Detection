@@ -102,4 +102,11 @@ Open **`http://localhost:5001/`** in your browser.
 When run on a Raspberry Pi 5, the app attempts to interact with **GPIO Pin 18** using `gpiozero` to control the physical irrigation relay. On non-Pi environments (such as Mac, Linux, or Windows PCs), it gracefully fails over to a **Mock GPIO Driver**, printing valve state updates to the terminal console so that full product presentations run flawlessly.
 
 ---
+## The Final Output
+<img width="3316" height="2064" alt="image" src="https://github.com/user-attachments/assets/88b36fbb-aa26-4927-8f24-01b25dcc7b23" />
+
+
+---
+
+
 *Made By Kuldeep Sisodiya❤️*
