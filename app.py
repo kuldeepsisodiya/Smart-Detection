@@ -8,6 +8,8 @@ import smtplib
 import json
 import base64
 import random
+import cv2
+import supervision as sv
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify, session, send_from_directory, render_template
@@ -265,20 +267,27 @@ def prune_storage():
             excess = count - limit
             print(f"[Storage Pruner] Found {count} images, exceeding limit {limit}. Pruning oldest {excess} images...")
             cursor.execute(
-                "SELECT id, image_path FROM detections WHERE image_path IS NOT NULL AND image_path != 'purged' ORDER BY timestamp ASC LIMIT ?",
+                "SELECT id, image_path, original_image_path FROM detections WHERE image_path IS NOT NULL AND image_path != 'purged' ORDER BY timestamp ASC LIMIT ?",
                 (excess,)
             )
             rows = cursor.fetchall()
             for row in rows:
                 det_id = row['id']
                 img_path = row['image_path']
+                orig_path = row['original_image_path']
                 if img_path and os.path.exists(img_path):
                     try:
                         os.remove(img_path)
                         print(f"[Storage Pruner] Deleted image: {img_path}")
                     except Exception as fe:
                         print(f"[Storage Pruner] Error deleting physical file {img_path}: {fe}")
-                cursor.execute("UPDATE detections SET image_path = 'purged' WHERE id = ?", (det_id,))
+                if orig_path and os.path.exists(orig_path):
+                    try:
+                        os.remove(orig_path)
+                        print(f"[Storage Pruner] Deleted original image: {orig_path}")
+                    except Exception as fe:
+                        print(f"[Storage Pruner] Error deleting physical file {orig_path}: {fe}")
+                cursor.execute("UPDATE detections SET image_path = 'purged', original_image_path = 'purged' WHERE id = ?", (det_id,))
             conn.commit()
         conn.close()
     except Exception as e:
@@ -802,9 +811,79 @@ def generate_backend_mock_predictions():
         'width': 250,
         'height': 200,
         'class': f"{crop} {disease}" if disease != 'Healthy' else f"{crop} leaf",
-        'confidence': confidence / 100.0
+        'confidence': confidence / 100.0,
+        'class_id': 0
     }]
     return predictions, crop, disease, severity, confidence
+
+
+def annotate_image_file(image_path, predictions):
+    """
+    Annotates the image at image_path using cv2 and supervision, and returns the annotated image.
+    """
+    try:
+        if not os.path.exists(image_path):
+            return None
+        
+        # Load the image
+        image = cv2.imread(image_path)
+        if image is None:
+            print(f"[Annotator Error] Failed to read image: {image_path}")
+            return None
+            
+        height, width, _ = image.shape
+        
+        if not isinstance(predictions, list):
+            predictions = []
+            
+        # Prepare predictions dictionary for supervision format
+        # Ensure class_id and class are present in every prediction
+        formatted_predictions = []
+        for idx, pred in enumerate(predictions):
+            if not isinstance(pred, dict):
+                continue
+            formatted_pred = pred.copy()
+            if 'class_id' not in formatted_pred:
+                formatted_pred['class_id'] = idx
+            if 'class' not in formatted_pred:
+                formatted_pred['class'] = 'unknown'
+            # Convert class from class_name if needed
+            if 'class_name' in formatted_pred and 'class' not in pred:
+                formatted_pred['class'] = formatted_pred['class_name']
+            formatted_predictions.append(formatted_pred)
+            
+        results = {
+            "image": {
+                "width": width,
+                "height": height
+            },
+            "predictions": formatted_predictions
+        }
+        
+        # Load the results into supervision
+        detections = sv.Detections.from_inference(results)
+        
+        # Create supervision annotators
+        bounding_box_annotator = sv.BoxAnnotator()
+        label_annotator = sv.LabelAnnotator()
+        
+        # Annotate the image
+        annotated_image = bounding_box_annotator.annotate(
+            scene=image, detections=detections)
+            
+        # Create labels list
+        labels = [
+            f"{c} {conf:.0%}"
+            for c, conf in zip(detections.data.get('class_name', []), detections.confidence)
+        ]
+        
+        annotated_image = label_annotator.annotate(
+            scene=annotated_image, detections=detections, labels=labels)
+            
+        return annotated_image
+    except Exception as e:
+        print(f"[Annotator Error] Exception during annotation: {e}")
+        return None
 
 
 @app.route('/api/history', methods=['GET', 'POST'])
@@ -874,18 +953,45 @@ def api_history():
             else:
                 mock_preds, crop, disease, severity, confidence = generate_backend_mock_predictions()
                 bounding_boxes = mock_preds
-            if image_path:
-                try:
-                    new_filename = f"det_{int(time.time())}_{crop.lower().replace(' ', '_')}.jpg"
-                    new_path = os.path.join(UPLOADS_DIR, new_filename)
-                    os.rename(image_path, new_path)
-                    image_path = new_path
-                except Exception as rename_err:
-                    print(f"[Image Rename Error] {rename_err}")
         if not crop:
             crop = 'Tomato'
         if not disease:
             disease = 'Healthy'
+        if image_path:
+            try:
+                # Ensure bounding_boxes is parsed into a list for annotation
+                boxes_list = bounding_boxes
+                if isinstance(boxes_list, str):
+                    if boxes_list.strip():
+                        boxes_list = json.loads(boxes_list)
+                    else:
+                        boxes_list = []
+                
+                timestamp = int(time.time())
+                crop_slug = crop.lower().replace(' ', '_')
+                
+                original_filename = f"det_{timestamp}_{crop_slug}_original.jpg"
+                original_path = os.path.join(UPLOADS_DIR, original_filename)
+                
+                annotated_filename = f"det_{timestamp}_{crop_slug}_annotated.jpg"
+                annotated_path = os.path.join(UPLOADS_DIR, annotated_filename)
+                
+                # Move the upload to the original image path
+                os.rename(image_path, original_path)
+                
+                # Annotate the image and save it as annotated
+                annotated_img = annotate_image_file(original_path, boxes_list)
+                if annotated_img is not None:
+                    cv2.imwrite(annotated_path, annotated_img)
+                    image_path = f"static/uploads/{annotated_filename}"
+                    original_image_path = f"static/uploads/{original_filename}"
+                else:
+                    # Fallback
+                    shutil.copy2(original_path, annotated_path)
+                    image_path = f"static/uploads/{annotated_filename}"
+                    original_image_path = f"static/uploads/{original_filename}"
+            except Exception as img_proc_err:
+                print(f"[Image Processing/Annotation Error] {img_proc_err}")
         cursor.execute('''
             INSERT INTO detections (crop, disease, confidence, severity, bounding_boxes, image_path, original_image_path)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -1005,15 +1111,17 @@ def api_history():
 def api_clear_history():
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT image_path FROM detections WHERE image_path IS NOT NULL AND image_path != 'purged'")
+    cursor.execute("SELECT image_path, original_image_path FROM detections")
     rows = cursor.fetchall()
     for row in rows:
-        img_path = row[0]
-        if img_path and os.path.exists(img_path):
-            try:
-                os.remove(img_path)
-            except Exception as e:
-                print(f"[Clear History] Error deleting file {img_path}: {e}")
+        img_path = row['image_path']
+        orig_path = row['original_image_path']
+        for p in [img_path, orig_path]:
+            if p and p != 'purged' and os.path.exists(p):
+                try:
+                    os.remove(p)
+                except Exception as e:
+                    print(f"[Clear History] Error deleting file {p}: {e}")
     cursor.execute("DELETE FROM detections")
     cursor.execute("DELETE FROM irrigation_log")
     conn.commit()
